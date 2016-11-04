@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+from __future__ import print_function
+
 import numpy as np
 import pandas as pd
 import scipy.stats as st
@@ -105,10 +107,10 @@ class Analyser(object):
 
         for index, row in cleaned.iterrows():
             cleaned.set_value(index, 'responses',
-                              filter(lambda x: x != self.miss, row.responses))
-            cleaned.set_value(index, 'primary cues',
-                              filter(lambda x: x != self.miss,
-                                     row['primary cues']))
+                              [x for x in row.responses if  x != self.miss])
+            cleaned.set_value(
+                index, 'primary cues',
+                [x for x in row['primary cues'] if x != self.miss])
         return cleaned
 
     def _compute_stats(self):
@@ -135,7 +137,7 @@ class Analyser(object):
             responses = x['responses'].strip().split(',')
 
             # get their indices or -1 if not in WAS
-            response_idx = map(lambda y: self.w2i.get(y, self.miss), responses)
+            response_idx = [self.w2i.get(y, self.miss) for y in responses]
             x['responses'] = response_idx
 
             assert len(responses) == len(response_idx)
@@ -408,8 +410,9 @@ class Analyser(object):
                 if len(resp_chunk) < 0:  # correct answer is the only one
                     continue
 
-                row_sims = np.array(map(lambda x: self._get_similarity(x, ans),
-                                        resp_chunk), dtype=np.float)
+                row_sims = np.array(
+                    [self._get_similarity(x, ans) for x in resp_chunk],
+                    dtype=np.float)
 
                 # flip so that 0.element is the first before the solution
                 row_sims = row_sims[::-1]
@@ -425,7 +428,7 @@ class Analyser(object):
             ok_idx[i] = ~np.isnan(means[i])
 
             n_samples = np.sum([len(l) for l in sim_list])
-            print case, n_samples
+            print(case, n_samples)
             x = np.zeros((2, n_samples))
 
             l, xi = 0, -1
@@ -436,15 +439,15 @@ class Analyser(object):
                 l += slen
                 xi -= 1
             # ipdb.set_trace()
-            print 'Regression for >0 slope (n={0}): {1} p={2}'.format(
-                n_samples, *f_regression(x[0].reshape(-1, 1), x[1]))
+            print('Regression for >0 slope (n={0}): {1} p={2}'.format(
+                n_samples, *f_regression(x[0].reshape(-1, 1), x[1])))
             x_reg.append(x)
 
         p = st.ttest_ind(x_reg[0][1], x_reg[1][1])[1]
 
-        print 'T-test for similarity to final answer {0:.2f} vs {1:.2f}'\
+        print('T-test for similarity to final answer {0:.2f} vs {1:.2f}'\
             ' (p={2:.2f})'.format(
-                np.mean(x_reg[0][1]), np.mean(x_reg[1][1]), p)
+                np.mean(x_reg[0][1]), np.mean(x_reg[1][1]), p))
 
         n1, n2 = x_reg[0].shape[1], x_reg[1].shape[1]
 
@@ -458,8 +461,8 @@ class Analyser(object):
         x[1, n1:] = 1
         y[n1:] = x_reg[1][1]
 
-        print 'Regression for equal slopes (Fs, p-values):\n'
-        print f_regression(x.T, y)
+        print('Regression for equal slopes (Fs, p-values):\n')
+        print(f_regression(x.T, y))
 
         if doplots:
             plt.figure()
@@ -528,21 +531,21 @@ class Analyser(object):
         total = 0
         for index, row in self.data_idx.iterrows():
             s, resp = row.solution, row.responses
-            resp = filter(lambda x: x != s and x != -1, resp)
+            resp = [x for x in resp if x != s and x != -1]
 
             if len(resp) > 0:
                 all_words = set(np.arange(len(self.i2w)))-set([s])
                 random = np.random.choice(list(all_words), len(resp))
 
-                sim_all.append(np.mean(map(lambda w: f_sim(s, w), random)))
-                sim_res.append(np.mean(map(lambda r: f_sim(s, r), resp)))
+                sim_all.append(np.mean([f_sim(s, w) for w in random]))
+                sim_res.append(np.mean([f_sim(s, r) for r in resp]))
 
                 total += len(resp)+len(random)
 
-        print 'Similarity answer to responses: {:.3f}'.format(np.mean(sim_res))
-        print 'Similarity answer to rnd words: {:.3f}'.format(np.mean(sim_all))
-        print 't-test for difference (n={}): {:.2f} p={:.2f}'.format(
-            total, *st.ttest_ind(sim_res, sim_all))
+        print('Similarity answer to responses: {:.3f}'.format(np.mean(sim_res)))
+        print('Similarity answer to rnd words: {:.3f}'.format(np.mean(sim_all)))
+        print('t-test for difference (n={}): {:.2f} p={:.2f}'.format(
+            total, *st.ttest_ind(sim_res, sim_all)))
 
 if __name__ == "__main__":
     pd.set_option('display.precision', 3)
@@ -571,4 +574,4 @@ if __name__ == "__main__":
         dataset=args.dataset[0] + '.csv',
         path=args.path)
 
-    print analyser.results
+    print(analyser.results)

@@ -1,12 +1,16 @@
-from collections import OrderedDict
-from nengo import spa
+from __future__ import print_function
 
-import os.path
-import re
-import nengo
+import argparse
+from collections import OrderedDict
 import numpy as np
-import ctn_benchmark
+import os.path
 import pickle
+import re
+import sys
+
+from nengo import spa
+import nengo
+import pytry
 
 from sparat import load_assoc_mat
 
@@ -66,12 +70,13 @@ def RandomSelector(n_options, noise_std, seed, net=None):
     return net
 
 
-class CueSelection(spa.Module):
+class CueSelection(spa.module.Module):
     def __init__(
-            self, p, label=None, seed=None, add_to_container=None,
-            vocabs=None):
+            self, p, vocab, label=None, seed=None, add_to_container=None):
         super(CueSelection, self).__init__(
-            label, seed, add_to_container, vocabs)
+            label, seed, add_to_container)
+
+        self.vocab = vocab
 
         with self:
             self.n_cues = 3
@@ -110,38 +115,35 @@ class CueSelection(spa.Module):
             for cue in self.cues:
                 nengo.Connection(cue.output, self.output)
 
-        self.inputs = {'cue' + str(i): (cue.input, self.vocabs[p.d])
+        self.inputs = {'cue' + str(i): (cue.input, self.vocab)
                        for i, cue in enumerate(self.cues, start=1)}
-        self.outputs = {'default': (self.output, self.vocabs[p.d])}
+        self.outputs = {'default': (self.output, self.vocab)}
 
 
-class SpaRat(ctn_benchmark.Benchmark):
+class SpaRat(pytry.NengoTrial):
     def params(self):
-        self.default("vocab seed", vocab_seed=1)
-        self.default("vocab dimensionality", d=2048)
-        self.default("association matrix dir", assoc_dir=os.path.join(
+        self.param("vocab seed", vocab_seed=1)
+        self.param("vocab dimensionality", d=2048)
+        self.param("association matrix dir", assoc_dir=os.path.join(
             os.path.dirname(__file__), os.pardir, os.pardir, 'data',
             'associationmatrices'))
-        self.default("association matrix name",
+        self.param("association matrix name",
                      assoc_name='freeassoc_undir_symmetric')
-        self.default("percentage of removed associations", th=0.3)
-        self.default("cue word", cue1='cake')
-        self.default("cue word", cue2='swiss')
-        self.default("cue word", cue3='cottage')
-        self.default("solution", solution='cheese')
-        self.default("problem id", prob_id=1)
-        self.default("connection strength between cues and response",
+        self.param("percentage of removed associations", th=0.3)
+        self.param("cue word", cue1='cake')
+        self.param("cue word", cue2='swiss')
+        self.param("cue word", cue3='cottage')
+        self.param("solution", solution='cheese')
+        self.param("problem id", prob_id=1)
+        self.param("connection strength between cues and response",
                      cue_strength=0.1)
-        self.default("simulation length", sim_len=10.)
-        self.default("associative memory threshold", assoc_th=0.05)
-        self.default("wta feedback strength", wta_feedback_strength=0.5)
-        self.default("cue selector noise std", noise_std=0.01)
-        self.default("use saved vocab", use_saved_vocab=False)
-        self.default("wta associative memory noise input std", noise_wta=0.0)
-        self.default("inhibition integrator feedback", integrator_feedback=.95)
-        self.default("context", context=None)
-
-        self.hidden_params.append('context')
+        self.param("simulation length", sim_len=10.)
+        self.param("associative memory threshold", assoc_th=0.05)
+        self.param("wta feedback strength", wta_feedback_strength=0.5)
+        self.param("cue selector noise std", noise_std=0.01)
+        self.param("use saved vocab", use_saved_vocab=False)
+        self.param("wta associative memory noise input std", noise_wta=0.0)
+        self.param("inhibition integrator feedback", integrator_feedback=.95)
 
     def model(self, p):
         assoc, id2word, _ = load_assoc_mat(p.assoc_dir, p.assoc_name)
@@ -153,7 +155,7 @@ class SpaRat(ctn_benchmark.Benchmark):
 
         rng = np.random.RandomState(p.vocab_seed)
 
-        print 'Ones before flipping:', assoc.sum()
+        print('Ones before flipping:', assoc.sum())
 
         # find all ones
         one_idx = np.where(assoc > 0)
@@ -166,27 +168,26 @@ class SpaRat(ctn_benchmark.Benchmark):
         # flip those to 0 (remove associations)
         assoc[(one_idx[0][to_flip_idx], one_idx[1][to_flip_idx])] = 0
 
-        print 'Ones after flipping {0:.2f}: {1}'.format(p.th, assoc.sum())
+        print('Ones after flipping {0:.2f}: {1}'.format(p.th, assoc.sum()))
 
-        with spa.Module(seed=p.seed) as model:
-            if not p.use_saved_vocab:
-                print 'Creating new pointers.'
-                self.vocab = spa.Vocabulary(
-                    p.d, rng=np.random.RandomState(p.vocab_seed))
-                for w in id2word:
-                    self.vocab.parse(sanitize(w))
-            else:
-                sp_dir = os.path.join(
-                    os.path.dirname(__file__), os.pardir, os.pardir, 'data',
-                    'spa_vocabularies')
-                fname = 'vocab_{0}d_{1}s.pkl'.format(p.d, p.vocab_seed)
-                print 'Loading existing pointers:', fname
-                voc_path = os.path.join(sp_dir, fname)
-                self.vocab = pickle.load(file(voc_path))
-            print 'Done!'
+        if not p.use_saved_vocab:
+            print('Creating new pointers.')
+            self.vocab = spa.Vocabulary(
+                p.d, rng=np.random.RandomState(p.vocab_seed))
+            for w in id2word:
+                self.vocab.parse(sanitize(w))
+        else:
+            sp_dir = os.path.join(
+                os.path.dirname(__file__), os.pardir, os.pardir, 'data',
+                'spa_vocabularies')
+            fname = 'vocab_{0}d_{1}s.pkl'.format(p.d, p.vocab_seed)
+            print('Loading existing pointers:', fname)
+            voc_path = os.path.join(sp_dir, fname)
+            with open(voc_path, 'rb') as f:
+                self.vocab = pickle.load(f)
+        print('Done!')
 
-            model.vocabs.add(self.vocab)
-
+        with spa.SPA(seed=p.seed, vocabs=[self.vocab]) as model:
             model.state = spa.State(p.d, vocab=self.vocab.create_subset(cues))
             model.integrator = spa.State(p.d, feedback=p.integrator_feedback)
             model.wta = spa.AssociativeMemory(
@@ -198,13 +199,14 @@ class SpaRat(ctn_benchmark.Benchmark):
                     n_neurons=50, n_ensembles=len(self.vocab.vectors))
 
             # model input
-            model.cue_selection = CueSelection(p, seed=p.seed)
+            model.cue_selection = CueSelection(
+                p, seed=p.seed, vocab=self.vocab)
             nengo.Connection(model.cue_selection.output, model.state.input)
 
-            model.stimulus = spa.Input()
-            model.stimulus.cue_selection.cue1 = p.cue1.upper()
-            model.stimulus.cue_selection.cue2 = p.cue2.upper()
-            model.stimulus.cue_selection.cue3 = p.cue3.upper()
+            model.stimulus = spa.Input(
+                cue_selection_cue1=p.cue1.upper(),
+                cue_selection_cue2=p.cue2.upper(),
+                cue_selection_cue3=p.cue3.upper())
 
             assoc_tr = np.dot(
                 self.vocab.vectors.T, np.dot(assoc.T, self.vocab.vectors))
@@ -236,7 +238,7 @@ class SpaRat(ctn_benchmark.Benchmark):
 
             # white noise input to the WTA
             if p.noise_wta > 0:
-                print 'Adding noise to WTA.'
+                print('Adding noise to WTA.')
                 wn = nengo.processes.WhiteNoise(
                     dist=nengo.dists.Gaussian(mean=0., std=p.noise_wta))
                 model.wta_noise = nengo.Node(wn, size_out=p.d)
@@ -284,5 +286,12 @@ class SpaRat(ctn_benchmark.Benchmark):
             'timings': unique_responses.values(),
             'correct': correct}
 
+
+def str2bool(text):
+    return text.lower() in ("yes", "true", "t", "1")
+
+
 if __name__ == '__main__':
-    model = SpaRat().run()
+    trial = SpaRat()
+    params = trial.parse_args(sys.argv[1:])
+    trial.run(**params)

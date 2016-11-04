@@ -202,6 +202,7 @@ def fetch(dataset_name, path=os.curdir):
                    os.path.getsize(filename) < file_['size']):
                 time.sleep(1)
         else:
+            print(os.path.join(path, file_['name']))
             urllib.urlretrieve(
                 file_['url'], os.path.join(path, file_['name']),
                 report_progress)
