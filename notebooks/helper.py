@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 import numpy as np
 import os
 from sparat.data_processing.generate_association_matrix import load_assoc_mat
@@ -14,13 +16,13 @@ def show_associates(word, assoc, word2id, id2word, th=0.):
     their strengths for a given word `word`.
     """
 
-    print 'Associates of:', word
+    print('Associates of:', word)
     word = word.upper()
     assoc_idx = np.argsort(assoc[word2id[word]])[::-1]
     for idx in assoc_idx:
         w = assoc[word2id[word], idx]
         if w > th:
-            print id2word[idx], w
+            print(id2word[idx], w)
 
 def print_sims(sims, i2w, th=0.1):
     """
@@ -29,5 +31,5 @@ def print_sims(sims, i2w, th=0.1):
     """
     for i in np.argsort(sims)[::-1]:
         if sims[i] > th:
-            print i2w[i], sims[i]
+            print(i2w[i], sims[i])
 
