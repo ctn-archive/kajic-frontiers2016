@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+from __future__ import print_function
+
 import os
 import os.path
 import argparse
@@ -29,7 +31,7 @@ indices = [word2id[w.upper()] for w in args.words]
 for i in range(args.hops[0]):
     indices = np.where(np.sum(strength_mat[indices], axis=0))[0]
 
-print 'Selected {} words.'.format(len(indices))
+print('Selected {} words.'.format(len(indices)))
 
 strength_mat = generate_association_matrix.tr_normalize(
     strength_mat[indices][:, indices])

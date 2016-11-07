@@ -1,12 +1,10 @@
+from __future__ import print_function
+
 from model import SpaRat
 import pandas as pd
-import ctn_benchmark as cb
 import os
 import time
 import timeit
-
-import pyopencl as cl
-ctx = cl.create_some_context()
 
 nr_prob = 25        # number of RAT problems
 seed_start = 0      # number of seeds corresponds to the number of
@@ -31,6 +29,13 @@ problems_dir = os.path.join(base_dir, os.pardir, os.pardir,
 prob = pd.read_csv(problems_dir, header=None, delimiter=' ',
                    index_col=0, names=[u'cue1', u'cue2', u'cue3', u'solution'])
 
+try:
+    import nengo_ocl
+except ImportError:
+    backend = 'nengo'
+else:
+    backend = 'nengo_ocl'
+
 # run simulations
 filenames = []
 for prob_id, row in prob.iterrows():
@@ -44,12 +49,10 @@ for prob_id, row in prob.iterrows():
                      sim_len=sim_len,
                      prob_id=prob_id,
                      assoc_name=assoc_name,
-                     use_saved_vocab=True,
                      data_dir=results_dir,
-                     backend='nengo_ocl',
-                     context=ctx)
+                     backend=backend)
         end = timeit.time.time()
-        print 'Finished after {:.2f} sec.'.format(end-start)
+        print('Finished after {:.2f} sec.'.format(end-start))
 
 # load simulation results in dataframe
 cols_in = ['_prob_id', '_cue1', '_cue2', '_cue3', '_solution', 'correct',

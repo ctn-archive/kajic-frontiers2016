@@ -6,16 +6,18 @@ the search process. Here we present only a subset of those methods.
 
 ## Running the script
 
-The script is executed from the command line (use `chmod +x analyser.py` to set the permission for running if not already set). This script depends on the existence of the word vector space in the `../../data/wordvectors/' directory. If vectors are not available, the script will complain it can't find it. 
+The script is executed from the command line. This script depends on the
+existence of the word vector space in the `../data/wordvectors/` directory.
+If vectors are not available, the script will exit with an error.
 
 
 To get the statistics from the paper:
 
 ```
-./analyser.py fbinary_google_symmetric_simulations
+python analyser.py fbinary_google_symmetric_simulations
 ```
 
-The `fbinary_google_symmetric_simulations.csv` file has been downloaded with
+The `fbinary_google_symmetric_simulations.csv` file is included in
 this repository, but it can be generated with the `RAT_Response_Filtering`
 notebook.
 
@@ -31,8 +33,10 @@ as across (or between) cue cluster.
 For clarity, each of the methods below will be accompanied with a short
 description of it applies to the following simple example:
 
+```
 R1 -> R2 -> R3 -> R4 -> R5 -> R6
 C1 -> C1 -> C1 -> C2 -> C2 -> C3
+```
 
 Where R_n stands for the n-response in a sequence of responses, and C_n for the
 assigned primary cue. Primary cues are assigned based on the shortest distance
@@ -91,8 +95,10 @@ influenced by the preceding response. To test this, adjacent and non-adjacent
 responses with different primary cues are compared.
 
 From the above given example:
+```
 R1 -> R2 -> R3 -> R4 -> R5 -> R6
 C1 -> C1 -> C1 -> C2 -> C2 -> C3
+```
 
 | Adjacent across cue | Non-adjacent across cue |
 |---------------------|------------------------ |
